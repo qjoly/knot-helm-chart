@@ -1,0 +1,25 @@
+---
+apiVersion: v2
+type: application
+name: knot
+description: "A knot is the git server of Tangled, the code collaboration platform built on ATProto."
+version: 0.1.0
+appVersion: "v1.16.1-alpha"
+# icon:
+maintainers:
+  - name: QJOLY
+    email: github@une-tasse-de.cafe
+kubeVersion: ">= 1.18"
+home: https://docs.tangled.org/knots
+keywords:
+  - knot
+  - tangled
+  - git
+  - atproto
+sources:
+  - https://tangled.org/tangled.org/knot-docker
+  - https://tangled.org/tangled.org/core
+dependencies:
+  - name: common
+    repository: https://rubxkube.github.io/common-charts
+    version: v0.6.2

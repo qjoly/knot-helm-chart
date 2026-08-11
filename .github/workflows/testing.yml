@@ -1,0 +1,28 @@
+---
+name: testing
+on:
+  pull_request:
+  workflow_dispatch: {}
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: azure/setup-helm@v5
+
+      - name: Lint YAML
+        run: pip install yamllint && yamllint .
+
+      - name: Lint the chart
+        run: |
+          helm dependency build charts/knot
+          helm lint charts/knot
+
+      - uses: helm/kind-action@v1.14.0
+
+      - name: Install into kind
+        run: helm install knot charts/knot --wait --timeout 300s
+
+      - name: Test
+        run: helm test knot --logs

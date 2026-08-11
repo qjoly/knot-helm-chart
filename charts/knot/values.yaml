@@ -1,0 +1,152 @@
+---
+define: &containerPort 5555
+
+common:
+  name: knot
+  service:
+    type: ClusterIP
+    enabled: true
+    servicePort: *containerPort
+    containerPort: *containerPort
+    extraLabels: {}
+
+  # deployment
+  deployment:
+    memoryRequest: 256Mi
+    cpuRequest: 100m
+    memoryLimit: 1Gi
+    cpuLimit: null
+    port: *containerPort
+    strategy:
+      type: Recreate
+
+    # s6 supervises both the knot server and sshd, and sshd binds port 22, so
+    # this image runs as root. The knot process itself is dropped to the git
+    # user (uid/gid 1000) by s6-setuidgid.
+    podSecurityContext:
+      fsGroup: 1000
+
+  # container
+  image:
+    repositorySettings:
+      isPrivate: false
+      secretName: null
+    # The community image atcr.io/tangled.org/knot needs authentication even to
+    # pull, so this one is rebuilt from the same Dockerfile onto a public registry.
+    repository: ghcr.io/qjoly/knot
+    tag: v1.16.1-alpha
+    pullPolicy: IfNotPresent
+
+  # ingress
+  ingress:
+    enabled: false
+    hostName: knot.example.com
+    tls:
+      enabled: true
+      secretName: ""
+    # For Ingress CRD
+    ingressClassName:
+
+  # env variables
+  variables:
+    secret: {}
+    nonSecret:
+      # -- REQUIRED. Public FQDN of the knot. It becomes the knot's atproto
+      # identity (`did:web:<hostname>`) and the audience of every service-auth
+      # JWT, so it must match the domain registered on the appview exactly.
+      KNOT_SERVER_HOSTNAME: knot.example.com
+      # -- REQUIRED. ATProto DID of the owner. Resolve yours with
+      # `curl "https://public.api.bsky.app/xrpc/com.atproto.identity.resolveHandle?handle=<handle>"`
+      KNOT_SERVER_OWNER: did:plc:000000000000000000000000
+      KNOT_SERVER_DB_PATH: /app/knotserver.db
+      KNOT_REPO_SCAN_PATH: /home/git/repositories
+      # sshd runs the knot process without resetting HOME, and the global git
+      # config lives under it.
+      HOME: /home/git
+      # Left empty on purpose: /admin is served on the public port behind HTTP
+      # basic auth only, and the middleware rejects everything while unset.
+      KNOT_SERVER_ADMIN_SECRET: ""
+
+  # horizontal autoscaler
+  # The knot keeps its state in one SQLite file, shared by the app and the
+  # casbin enforcer, so it does not scale horizontally.
+  hpa:
+    enabled: false
+    minReplicas: 1
+    maxReplicas: 2
+    avgCpuUtilization: 50
+
+  # startupProbe
+  startupProbeEnabled: false
+  startupProbe: {}
+
+  # readinessProbe
+  # "/" serves an embedded motd, which is what the image's own healthcheck hits.
+  readinessProbeEnabled: true
+  readinessProbe:
+    httpGet:
+      path: "/"
+      port: *containerPort
+    initialDelaySeconds: 10
+    periodSeconds: 15
+    failureThreshold: 3
+    timeoutSeconds: 3
+
+  # livenessProbe
+  livenessProbeEnabled: true
+  livenessProbe:
+    httpGet:
+      path: "/"
+      port: *containerPort
+    initialDelaySeconds: 30
+    periodSeconds: 60
+    failureThreshold: 3
+    timeoutSeconds: 5
+
+  persistence:
+    enabled: true
+    volumes:
+      - name: "repositories"
+        storageClassName: ""  # leave empty if you want to use default
+        size: "20Gi"  # the bare git repositories, one directory per repo DID
+        pvcClaim: ""  # leave empty unless if you want to use an existing PVC
+        containerMount: "/home/git/repositories"
+      - name: "server"
+        storageClassName: ""
+        size: "2Gi"  # sqlite: known dids, pubkeys, repo mapping, acl, cursor
+        pvcClaim: ""
+        containerMount: "/app"
+      - name: "keys"
+        storageClassName: ""
+        # ssh host keys, generated on first boot. Losing this volume changes the
+        # host identity and every client gets REMOTE HOST IDENTIFICATION CHANGED.
+        size: "64Mi"
+        pvcClaim: ""
+        containerMount: "/etc/ssh/keys"
+
+  # Pushing to a knot only works over SSH: the HTTP endpoint answers
+  # "Pushes are only supported over SSH." And the appview builds clone URLs as
+  # git@<hostname>:<owner>/<repo>, with no way to advertise another port, so
+  # port 22 of that hostname has to reach this pod. Swap the type for NodePort,
+  # or drop this and use a hostPort, if LoadBalancer does not fit your cluster.
+  extraResources:
+    - apiVersion: v1
+      kind: Service
+      metadata:
+        name: knot-ssh
+      spec:
+        type: LoadBalancer
+        selector:
+          app: knot
+        ports:
+          - name: ssh
+            port: 22
+            targetPort: 22
+            protocol: TCP
+
+  tests:
+    classicHttp:  # default helm test method
+      enabled: true
+    curlHostHeader:  # curl using ingress.hostName as Host in header
+      enabled: true
+      path: "/xrpc/sh.tangled.knot.version"

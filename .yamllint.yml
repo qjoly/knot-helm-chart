@@ -1,0 +1,17 @@
+---
+extends: default
+
+rules:
+  line-length: disable
+  quoted-strings: disable
+  truthy: disable
+  comments:
+    level: warning
+  comments-indentation:
+    level: warning
+  document-start:
+    level: warning
+
+ignore: |
+  charts/**/templates/
+  charts/**/charts/
