@@ -1,0 +1,32 @@
+apiVersion: v1
+entries:
+  knot:
+  - apiVersion: v2
+    appVersion: v1.16.1-alpha
+    created: "2026-08-11T23:12:37.082476+02:00"
+    dependencies:
+    - name: common
+      repository: https://rubxkube.github.io/common-charts
+      version: v0.6.2
+    description: A knot is the git server of Tangled, the code collaboration platform
+      built on ATProto.
+    digest: 1f7f5abce36985759d0efd72dc17bfa7a53648b9d4856b2df212acebd3e08049
+    home: https://docs.tangled.org/knots
+    keywords:
+    - knot
+    - tangled
+    - git
+    - atproto
+    kubeVersion: '>= 1.18'
+    maintainers:
+    - email: github@une-tasse-de.cafe
+      name: QJOLY
+    name: knot
+    sources:
+    - https://tangled.org/tangled.org/knot-docker
+    - https://tangled.org/tangled.org/core
+    type: application
+    urls:
+    - https://github.com/qjoly/knot-helm-chart/releases/download/knot-0.1.0/knot-0.1.0.tgz
+    version: 0.1.0
+generated: "2026-08-11T23:12:37.080966+02:00"
