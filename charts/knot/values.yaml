@@ -38,7 +38,7 @@ common:
     # at /app/backup, never at the live database.
     additionalContainers:
       - name: backup-dump
-        image: "alpine:3.22"
+        image: "alpine:3.24"
         command:
           - /bin/sh
           - -c
