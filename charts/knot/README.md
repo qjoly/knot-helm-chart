@@ -1,6 +1,6 @@
 # knot
 
-![Version: 0.1.0](https://img.shields.io/badge/Version-0.1.0-informational?style=flat-square) ![Type: application](https://img.shields.io/badge/Type-application-informational?style=flat-square) ![AppVersion: v1.16.1-alpha](https://img.shields.io/badge/AppVersion-v1.16.1--alpha-informational?style=flat-square)
+![Version: 0.2.0](https://img.shields.io/badge/Version-0.2.0-informational?style=flat-square) ![Type: application](https://img.shields.io/badge/Type-application-informational?style=flat-square) ![AppVersion: v1.16.1-alpha](https://img.shields.io/badge/AppVersion-v1.16.1--alpha-informational?style=flat-square)
 
 A knot is the git server of Tangled, the code collaboration platform built on ATProto.
 
@@ -29,6 +29,21 @@ Kubernetes: `>= 1.18`
 
 | Key | Type | Default | Description |
 |-----|------|---------|-------------|
+| common.deployment.additionalContainers[0].command[0] | string | `"/bin/sh"` |  |
+| common.deployment.additionalContainers[0].command[1] | string | `"-c"` |  |
+| common.deployment.additionalContainers[0].command[2] | string | `"set -eu\napk add --no-cache sqlite >/dev/null\nmkdir -p /app/backup\n# the knot creates the database on its first boot, and this sidecar\n# can win that race\nwhile [ ! -f /app/knotserver.db ]; do\n  echo \"waiting for /app/knotserver.db\"\n  sleep 5\ndone\nwhile true; do\n  rm -f /app/backup/knotserver.db.tmp\n  sqlite3 file:/app/knotserver.db?mode=ro \\\n    \"VACUUM INTO '/app/backup/knotserver.db.tmp'\"\n  mv /app/backup/knotserver.db.tmp /app/backup/knotserver.db\n  tar cf /app/backup/ssh-host-keys.tar -C /etc/ssh/keys .\n  echo \"$(date -Iseconds) dumped $(stat -c %s /app/backup/knotserver.db) bytes\"\n  sleep \"${DUMP_INTERVAL_SECONDS}\"\ndone\n"` |  |
+| common.deployment.additionalContainers[0].env[0].name | string | `"DUMP_INTERVAL_SECONDS"` |  |
+| common.deployment.additionalContainers[0].env[0].value | string | `"21600"` |  |
+| common.deployment.additionalContainers[0].image | string | `"alpine:3.22"` |  |
+| common.deployment.additionalContainers[0].name | string | `"backup-dump"` |  |
+| common.deployment.additionalContainers[0].resources.limits.memory | string | `"128Mi"` |  |
+| common.deployment.additionalContainers[0].resources.requests.cpu | string | `"10m"` |  |
+| common.deployment.additionalContainers[0].resources.requests.memory | string | `"32Mi"` |  |
+| common.deployment.additionalContainers[0].volumeMounts[0].mountPath | string | `"/app"` |  |
+| common.deployment.additionalContainers[0].volumeMounts[0].name | string | `"server"` |  |
+| common.deployment.additionalContainers[0].volumeMounts[1].mountPath | string | `"/etc/ssh/keys"` |  |
+| common.deployment.additionalContainers[0].volumeMounts[1].name | string | `"keys"` |  |
+| common.deployment.additionalContainers[0].volumeMounts[1].readOnly | bool | `true` |  |
 | common.deployment.cpuLimit | string | `nil` |  |
 | common.deployment.cpuRequest | string | `"100m"` |  |
 | common.deployment.memoryLimit | string | `"1Gi"` |  |

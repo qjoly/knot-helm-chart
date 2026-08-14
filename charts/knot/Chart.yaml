@@ -3,7 +3,7 @@ apiVersion: v2
 type: application
 name: knot
 description: "A knot is the git server of Tangled, the code collaboration platform built on ATProto."
-version: 0.1.0
+version: 0.2.0
 appVersion: "v1.16.1-alpha"
 # icon:
 maintainers:

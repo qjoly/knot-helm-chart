@@ -26,6 +26,57 @@ common:
     podSecurityContext:
       fsGroup: 1000
 
+    # Writes a consistent copy of the state a backup tool can safely read.
+    #
+    # knotserver.db is the only place the PLC rotation key of every repo DID
+    # lives (repo_keys.signing_key), so losing it means permanently losing
+    # control of those DIDs -- the git repositories are replaceable, this is
+    # not. The database runs in WAL mode, so copying the live files is not
+    # atomic; VACUUM INTO produces a single consistent snapshot instead.
+    #
+    # sqlite3 is not in the knot image, hence a sidecar. Point your backup tool
+    # at /app/backup, never at the live database.
+    additionalContainers:
+      - name: backup-dump
+        image: "alpine:3.22"
+        command:
+          - /bin/sh
+          - -c
+          - |
+            set -eu
+            apk add --no-cache sqlite >/dev/null
+            mkdir -p /app/backup
+            # the knot creates the database on its first boot, and this sidecar
+            # can win that race
+            while [ ! -f /app/knotserver.db ]; do
+              echo "waiting for /app/knotserver.db"
+              sleep 5
+            done
+            while true; do
+              rm -f /app/backup/knotserver.db.tmp
+              sqlite3 file:/app/knotserver.db?mode=ro \
+                "VACUUM INTO '/app/backup/knotserver.db.tmp'"
+              mv /app/backup/knotserver.db.tmp /app/backup/knotserver.db
+              tar cf /app/backup/ssh-host-keys.tar -C /etc/ssh/keys .
+              echo "$(date -Iseconds) dumped $(stat -c %s /app/backup/knotserver.db) bytes"
+              sleep "${DUMP_INTERVAL_SECONDS}"
+            done
+        env:
+          - name: DUMP_INTERVAL_SECONDS
+            value: "21600"
+        volumeMounts:
+          - name: server
+            mountPath: /app
+          - name: keys
+            mountPath: /etc/ssh/keys
+            readOnly: true
+        resources:
+          requests:
+            memory: 32Mi
+            cpu: 10m
+          limits:
+            memory: 128Mi
+
   # container
   image:
     repositorySettings:
