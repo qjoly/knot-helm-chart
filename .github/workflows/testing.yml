@@ -19,7 +19,7 @@ jobs:
           helm dependency build charts/knot
           helm lint charts/knot
 
-      - uses: helm/kind-action@v1.14.0
+      - uses: helm/kind-action@v1.15.0
 
       - name: Install into kind
         run: helm install knot charts/knot --wait --timeout 300s
