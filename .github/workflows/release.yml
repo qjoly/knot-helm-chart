@@ -27,6 +27,6 @@ jobs:
       - name: Add the common repository
         run: helm repo add common https://rubxkube.github.io/common-charts
 
-      - uses: helm/chart-releaser-action@v1.7.0
+      - uses: helm/chart-releaser-action@v1.9.0
         env:
           CR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
